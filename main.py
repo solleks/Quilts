@@ -1,27 +1,6 @@
 import sys
-import random
+import math
 from PySide6 import QtCore, QtWidgets, QtGui
-
-class MyWidget(QtWidgets.QWidget):
-    def __init__(self):
-        super().__init__()
-
-        self.hello = ["Hallo Welt", "Hei maailma", "Hola Mundo"]
-
-        self.button = QtWidgets.QPushButton("Click me!")
-        self.text = QtWidgets.QLabel("Hello World",
-                                     alignment=QtCore.Qt.AlignCenter)
-
-        self.layout = QtWidgets.QVBoxLayout(self)
-        self.layout.addWidget(self.text)
-        self.layout.addWidget(self.button)
-
-        self.button.clicked.connect(self.magic)
-
-    @QtCore.Slot()
-    def magic(self):
-        self.text.setText(random.choice(self.hello))
-
 
 # A quilt is an M x N rectangle of squares
 # Each square is I x I pixels
@@ -47,6 +26,11 @@ class Element:
         self.coords = list(map(lambda c: QtCore.QPoint(c[0], c[1]), coords))
         self.color = QtGui.QColor.fromHsv(hue, saturation, value)
 
+    def re_color(self, hue, saturation, value):
+        coords = list(map(lambda pt: (pt.x(), pt.y()), self.coords))
+        return Element(self.height, self.width, coords, hue,
+                       saturation, value)
+
     def horizontal_flip(self):
         coords = list(map(lambda pt: (self.width - pt.x(), pt.y()),
                           self.coords))
@@ -64,13 +48,28 @@ class Element:
                                       self.height - pt.y()),
                           self.coords))
         return Element(self.height, self.width, coords, self.color.hue(),
-                       self.color.saturation(), self.color.value()) 
+                       self.color.saturation(), self.color.value())
+
+    def rotate_point(self, pt, angle):
+        if angle == 90:
+            return (self.width - pt.y(), pt.x())
+        elif angle == 180:
+            return (self.width - pt.x(), self.height - pt.y())
+        elif angle == 270:
+            return (pt.y() , self.height - pt.x())
+        else:
+            return (pt.x(), pt.y())
+
+    def rotate(self, angle):
+        coords = list(map(lambda pt: self.rotate_point(pt, angle), self.coords))
+        return Element(self.height, self.width, coords, self.color.hue(),
+                       self.color.saturation(), self.color.value())
 
 # This quilt class will create and return a QPixmap
-class OhioStarlightQuilt:
-    def __init__(self):
-        self.sq_size = 30
-        self.sq_num = 20
+class QuiltPattern:
+    def __init__(self, sq_size, sq_num):
+        self.sq_size = sq_size
+        self.sq_num = sq_num
         self.total_size = self.sq_num * self.sq_size
 
         # Our pattern is a map from quilt coordinate (x, y) -> Element
@@ -78,49 +77,7 @@ class OhioStarlightQuilt:
 
         self.background_color = QtGui.QColor("white")
         self.guideline_color = QtGui.QColor("lightgrey")
-        self.checkerboard_color = QtGui.QColor.fromHsv(255, 85, 160)
-        self.hourglass_color = QtGui.QColor.fromHsv(210, 85, 255)
 
-        # An factor to vary the color by depending on position
-        self.color_adj = 3
-
-        self.ul_triangle = [QtCore.QPoint(0, 0),
-                            QtCore.QPoint(self.sq_size, 0),
-                            QtCore.QPoint(0, self.sq_size),
-                            QtCore.QPoint(0, 0)]
-        self.ur_triangle = [QtCore.QPoint(0, 0),
-                            QtCore.QPoint(self.sq_size, 0),
-                            QtCore.QPoint(self.sq_size, self.sq_size),
-                            QtCore.QPoint(0, 0)]
-        self.ll_triangle = [QtCore.QPoint(0, 0),
-                            QtCore.QPoint(self.sq_size, self.sq_size),
-                            QtCore.QPoint(0, self.sq_size),
-                            QtCore.QPoint(0, 0)]
-        self.lr_triangle = [QtCore.QPoint(0, self.sq_size),
-                            QtCore.QPoint(self.sq_size, 0),
-                            QtCore.QPoint(self.sq_size, self.sq_size),
-                            QtCore.QPoint(0, self.sq_size)]
-
-        self.center_element = Element(self.sq_size, self.sq_size,
-                                      [(0, 0), (0, self.sq_size),
-                                       (self.sq_size, self.sq_size),
-                                       (self.sq_size, 0), (0, 0)],
-                                      60, 85, 50)
-
-        # self.checker_element = Element(self.sq_size, self.sq_size,
-          #                            [(0, 0), (0, self.sq_size),
-          #                             (self.sq_size, self.sq_size),
-           #                            (self.sq_size, 0), (0, 0)],
-            #                           255, 85, 160)
-        self.checker_element = Element(self.sq_size, self.sq_size,
-                                      [(0, 0), (0, self.sq_size),
-                                       (self.sq_size//2, self.sq_size),
-                                       (self.sq_size//2, self.sq_size//2),
-                                       (self.sq_size, self.sq_size//2),
-                                       (self.sq_size, 0), (0, 0)],
-                                       255, 85, 160)
-
-        
     def copy_pattern(self, dest_ul, wh, source_ul):
         for i in range(0, wh[0]):
             for j in range(0, wh[1]):
@@ -152,7 +109,41 @@ class OhioStarlightQuilt:
                           source_ul[1] + (wh[1] - 1 - j))
                 dest = (dest_ul[0] + i, dest_ul[1] + j)
                 if source in self.pattern:
-                    self.pattern[dest] = self.pattern[source].both_flip()   
+                    self.pattern[dest] = self.pattern[source].both_flip()
+
+    def rotate(self, dest_ul, wh, source_ul, angle):
+        if angle == 90:
+            for i in range(0, wh[0]):
+                for j in range(0, wh[1]):
+                    source = (source_ul[0] + j,
+                              source_ul[1] + (wh[0] - 1 - i))
+                    dest = (dest_ul[0] + i, dest_ul[1] + j)
+                    if source in self.pattern:
+                        self.pattern[dest] = self.pattern[source].rotate(angle)
+        elif angle == 180:
+             for i in range(0, wh[0]):
+                for j in range(0, wh[1]):
+                    source = (source_ul[0] + (wh[0] - 1 - i),
+                              source_ul[1] + (wh[0] - 1 - j))
+                    dest = (dest_ul[0] + i, dest_ul[1] + j)
+                    if source in self.pattern:
+                        self.pattern[dest] = self.pattern[source].rotate(angle)
+        elif angle == 270:
+             for i in range(0, wh[0]):
+                for j in range(0, wh[1]):
+                    source = (source_ul[0] + (wh[0] - 1 - j),
+                              source_ul[1] + i)
+                    dest = (dest_ul[0] + i, dest_ul[1] + j)
+                    if source in self.pattern:
+                        self.pattern[dest] = self.pattern[source].rotate(angle)
+        else:
+             for i in range(0, wh[0]):
+                for j in range(0, wh[1]):
+                    source = (source_ul[0] + i, source_ul[1] + j)
+                    dest = (dest_ul[0] + i, dest_ul[1] + j)
+                    if source in self.pattern:
+                        self.pattern[dest] = self.pattern[source]
+            
 
     def draw_element(self, x_offset, y_offset, elem):
         pen = QtGui.QPen(elem.color)
@@ -169,35 +160,74 @@ class OhioStarlightQuilt:
         for coord, elem in self.pattern.items():
             self.draw_element(coord[0], coord[1], elem)
         
-    def draw(self):
-        # Start transition to Element representation.
-        self.pattern[(0, 0)] = self.checker_element
 
+class OhioStarlightQuilt(QuiltPattern):
+    def __init__(self):
+        super().__init__(30, 20)
+        
+        self.center_element = Element(self.sq_size, self.sq_size,
+                                      [(0, 0), (0, self.sq_size),
+                                       (self.sq_size, self.sq_size),
+                                       (self.sq_size, 0), (0, 0)],
+                                      60, 85, 50)
+
+        self.checker_element = Element(self.sq_size, self.sq_size,
+                                      [(0, 0), (0, self.sq_size),
+                                       (self.sq_size//2, self.sq_size),
+                                       (self.sq_size//2, self.sq_size//2),
+                                       (self.sq_size, self.sq_size//2),
+                                       (self.sq_size, 0), (0, 0)],
+                                       255, 85, 160)
+
+        self.triangle_element = Element(self.sq_size, self.sq_size,
+                                        [(0, 0), (self.sq_size, self.sq_size),
+                                         (0, self.sq_size), (0, 0)],
+                                        210, 85, 255)
+
+    # TODO: Make the pattern of drawing into a data structure and/or file
+    # format.
+    def draw(self):
+        # Define basic checkerboard pair.
+        self.pattern[(0, 0)] = self.checker_element
         self.copy_pattern((1, 1), (1, 1), (0, 0))
+
+        # Copy and flip checkerboard.
         self.horizontal_flip((4, 0), (2, 2), (0, 0))
         self.vertical_flip((0, 4), (2, 2), (0, 0))
         self.both_flip((4, 4), (2, 2), (0, 0))
-        
+
+        # Define basic hourglass pattern made up of triangles.
+        self.pattern[(2, 0)] = self.triangle_element
+        self.pattern[(2, 1)] = self.triangle_element.vertical_flip().re_color(15, 85, 230)
+        self.pattern[(3, 0)] = self.triangle_element.horizontal_flip().re_color(5, 85, 220)
+        self.pattern[(3, 1)] = self.triangle_element.both_flip().re_color(220, 85, 240)
+
+        # Rotate hourglass pattern to three remaining sides of center.
+        self.rotate((4, 2), (2, 2), (2, 0), 90)
+        self.rotate((2, 4), (2, 2), (2, 0), 180)
+        self.rotate((0, 2), (2, 2), (2, 0), 270)
+
+        # Define center blocks.
         self.pattern[(2, 2)] = self.center_element
-        self.pattern[(2, 3)] = self.center_element
-        self.pattern[(3, 2)] = self.center_element
-        self.pattern[(3, 3)] = self.center_element
+        self.horizontal_flip((3, 2), (1, 1), (2, 2))
+        self.vertical_flip((2, 3), (2, 1), (2, 2))
 
-        self.copy_pattern((9, 2), (2, 2), (2, 2))
-        self.copy_pattern((16, 2), (2, 2), (2, 2))
-        self.copy_pattern((2, 9), (2, 2), (2, 2))
-        self.copy_pattern((9, 9), (2, 2), (2, 2))
-        self.copy_pattern((16, 9), (2, 2), (2, 2))
-        self.copy_pattern((2, 16), (2, 2), (2, 2))
-        self.copy_pattern((9, 16), (2, 2), (2, 2))
-        self.copy_pattern((16, 16), (2, 2), (2, 2))
-
+        # Copy center color to grid intersections.
         self.copy_pattern((6, 6), (1, 1), (2, 2))
-        self.copy_pattern((6, 13), (1, 1), (2, 2))
-        self.copy_pattern((13, 6), (1, 1), (2, 2))
-        self.copy_pattern((13, 13), (1, 1), (2, 2))
+        self.horizontal_flip((13, 6), (1, 1), (6, 6))
+        self.vertical_flip((6, 13), (1, 1), (6, 6))
+        self.both_flip((13, 13), (1, 1), (6, 6))
 
-        
+        # Copy combination pattern to eight new locations.
+        self.copy_pattern((0, 7), (6, 6), (0, 0))
+        self.copy_pattern((0, 14), (6, 6), (0, 0))
+        self.copy_pattern((7, 0), (6, 6), (0, 0))
+        self.copy_pattern((7, 7), (6, 6), (0, 0))
+        self.copy_pattern((7, 14), (6, 6), (0, 0))
+        self.copy_pattern((14, 0), (6, 6), (0, 0))
+        self.copy_pattern((14, 7), (6, 6), (0, 0))
+        self.copy_pattern((14, 14), (6, 6), (0, 0))
+
         pattern = QtGui.QPixmap(self.total_size, self.total_size)
         pattern.fill(self.background_color)
 
@@ -210,116 +240,55 @@ class OhioStarlightQuilt:
             self.painter.drawLine(0, x, self.total_size, x)
 
         self.draw_pattern()
-
-        # self.draw_checker_corners(0, 0)
-        self.draw_checker_corners(0, 7)
-        self.draw_checker_corners(0, 14)
-        self.draw_checker_corners(7, 0)
-        self.draw_checker_corners(7, 7)
-        self.draw_checker_corners(7, 14)
-        self.draw_checker_corners(14, 0)
-        self.draw_checker_corners(14, 7)
-        self.draw_checker_corners(14, 14)
-
-        self.draw_hourglasses(0, 0)
-        self.draw_hourglasses(0, 7)
-        self.draw_hourglasses(0, 14)
-        self.draw_hourglasses(7, 0)
-        self.draw_hourglasses(7, 7)
-        self.draw_hourglasses(7, 14)
-        self.draw_hourglasses(14, 0)
-        self.draw_hourglasses(14, 7)
-        self.draw_hourglasses(14, 14)
-        
+       
         self.painter.end()
 
         return pattern
 
-    def draw_checker_corners(self, x_offset, y_offset):
-        self.draw_checker_pair(x_offset, y_offset, parity="Even")
-        self.draw_checker_pair(x_offset + 4, y_offset, parity="Odd")
-        self.draw_checker_pair(x_offset, y_offset + 4, parity="Odd")
-        self.draw_checker_pair(x_offset + 4, y_offset + 4, parity="Even")
+class MichiganStarlightQuilt(OhioStarlightQuilt):
+    def __init__(self):
+        super().__init__()
         
+        self.center_element = Element(self.sq_size, self.sq_size,
+                                      [(self.sq_size, 0),
+                                       (self.sq_size, self.sq_size),
+                                       (0, self.sq_size),
+                                       (self.sq_size, 0)],
+                                      60, 85, 140)
+
+        # Produce a quarter circle of points from 3*pi/2 to 2*pi.
+        arc = [(round(self.sq_size * (math.cos(math.pi * (1.5 + i/24.0)))),
+                round(-self.sq_size * (math.sin(math.pi * (1.5 + i/24.0)))))
+               for i in range(0, 13)]
+        arc.append((0, 0))
+        arc.append((0, self.sq_size))
+        
+        self.checker_element = Element(self.sq_size, self.sq_size, arc,
+                                       255, 85, 160)
+
+        # Produce a quarter circle of points from pi to 3*pi/2.
+        arc = [(round(self.sq_size * (1.0 + math.cos(math.pi * (1.0 + i/24.0)))),
+                round(-self.sq_size * (math.sin(math.pi * (1.0 + i/24.0)))))
+               for i in range(0, 13)]
+        arc.append((0, self.sq_size))
+        arc.append((0, 0))
+        
+        self.triangle_element = Element(self.sq_size, self.sq_size, arc,
+                                        210, 85, 255)
+
     
-    def draw_checker_pair(self, x_offset, y_offset, parity):
-        if parity == "Even":
-            self.draw_checker_dark(x_offset, y_offset)
-            self.draw_checker_dark(x_offset + 1, y_offset + 1)
-        else:
-            self.draw_checker_dark(x_offset + 1, y_offset)
-            self.draw_checker_dark(x_offset, y_offset + 1)
-
-    def draw_checker_dark(self, x_offset, y_offset):
-        hue = self.checkerboard_color.hue()
-        saturation = self.checkerboard_color.saturation()
-        value = self.checkerboard_color.value()
-        hue = (hue + self.color_adj * (x_offset + y_offset - self.sq_num)) % 360
-        adjust_color = QtGui.QColor.fromHsv(hue, saturation, value)
-
-        pen = QtGui.QPen(adjust_color)
-        self.painter.setPen(pen)
-        brush = QtGui.QBrush(adjust_color)
-        self.painter.setBrush(brush)
-        self.painter.drawRect(x_offset * self.sq_size,
-                              y_offset * self.sq_size,
-                              self.sq_size, self.sq_size)
-
-    def draw_hourglasses(self, x_offset, y_offset):
-        self.draw_hourglass(x_offset + 2, y_offset, parity="Odd")
-        self.draw_hourglass(x_offset, y_offset + 2, parity="Even")
-        self.draw_hourglass(x_offset + 4, y_offset + 2, parity="Even")
-        self.draw_hourglass(x_offset + 2, y_offset + 4, parity="Odd")
-        
-    def draw_hourglass(self, x_offset, y_offset, parity):
-        if parity == "Even":
-            self.draw_hourglass_poly(x_offset, y_offset, corner="UR")
-            self.draw_hourglass_poly(x_offset + 1, y_offset, corner="UL")
-            self.draw_hourglass_poly(x_offset, y_offset + 1, corner="LR")
-            self.draw_hourglass_poly(x_offset + 1, y_offset + 1, corner="LL")
-        else:
-            self.draw_hourglass_poly(x_offset, y_offset, corner="LL")
-            self.draw_hourglass_poly(x_offset + 1, y_offset, corner="LR")
-            self.draw_hourglass_poly(x_offset, y_offset + 1, corner="UL")
-            self.draw_hourglass_poly(x_offset + 1, y_offset + 1, corner="UR")
-
-    def draw_hourglass_poly(self, x_offset, y_offset, corner):
-        hue = self.hourglass_color.hue()
-        saturation = self.hourglass_color.saturation()
-        value = self.hourglass_color.value()
-        hue = (hue + self.color_adj * (x_offset + y_offset - self.sq_num)) % 360
-        adjust_color = QtGui.QColor.fromHsv(hue, saturation, value)
-
-        pen = QtGui.QPen(adjust_color)
-        self.painter.setPen(pen)
-        brush = QtGui.QBrush(adjust_color)
-        self.painter.setBrush(brush)
-
-        offset_point = QtCore.QPoint(x_offset * self.sq_size,
-                                     y_offset * self.sq_size)
-        if corner == "UL":
-            pts = list(map(lambda pt: pt + offset_point, self.ul_triangle))
-            self.painter.drawPolygon(pts)
-        elif corner == "UR":
-            pts = list(map(lambda pt: pt + offset_point, self.ur_triangle))
-            self.painter.drawPolygon(pts)
-        elif corner == "LL":
-            pts = list(map(lambda pt: pt + offset_point, self.ll_triangle))
-            self.painter.drawPolygon(pts)
-        else:
-            pts = list(map(lambda pt: pt + offset_point, self.lr_triangle))
-            self.painter.drawPolygon(pts)
-
-
 # A simple drawing window with a QPainter and a QPixmap
 
 class QuiltWindow(QtWidgets.QMainWindow):
-    def __init__(self):
+    def __init__(self, arg):
         super().__init__()
         self.setWindowTitle("Quilt Pattern")
         self.setGeometry(100, 100, 800, 800)
 
-        self.quilt = OhioStarlightQuilt()
+        if arg == '1':
+            self.quilt = OhioStarlightQuilt()
+        else:
+            self.quilt = MichiganStarlightQuilt()
         self.canvas = self.quilt.draw()
 
         self.label = QtWidgets.QLabel(alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
@@ -330,11 +299,8 @@ class QuiltWindow(QtWidgets.QMainWindow):
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
 
-    window = QuiltWindow()
+    window = QuiltWindow(sys.argv[1] if len(sys.argv) > 1 else '1')
     window.show()
 
     sys.exit(app.exec())
 
-    
-        
-                      
