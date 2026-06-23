@@ -78,13 +78,13 @@ class QuiltPattern:
         self.background_color = QtGui.QColor("white")
         self.guideline_color = QtGui.QColor("lightgrey")
 
-    def copy_pattern(self, dest_ul, wh, source_ul):
+    def copy_pattern(self, dest_ul, wh, source_ul, elem_map = lambda x: x):
         for i in range(0, wh[0]):
             for j in range(0, wh[1]):
                 source = (source_ul[0] + i, source_ul[1] + j)
                 dest = (dest_ul[0] + i, dest_ul[1] + j)
                 if source in self.pattern:
-                    self.pattern[dest] = self.pattern[source]
+                    self.pattern[dest] = elem_map(self.pattern[source])
 
     def horizontal_flip(self, dest_ul, wh, source_ul):
         for i in range(0, wh[0]):
@@ -111,8 +111,30 @@ class QuiltPattern:
                 if source in self.pattern:
                     self.pattern[dest] = self.pattern[source].both_flip()
 
+    # Example for rotation
+    #
+    #              i
+    #        0 | 1 | 2 | 3
+    #      -----------------
+    #    0 | a | b | c | d |
+    #      -----------------
+    # j  1 | e | f | g | h |
+    #      -----------------
+    #    2 | i | j | k | l |
+    #      -----------------
+
+                    
     def rotate(self, dest_ul, wh, source_ul, angle):
         if angle == 90:
+            # rotate((2, 1), (2, 2), (0, 0), 90)
+            # means "put a, b, e, f where h, l, g, k currently are"
+            # Note that destination space, including wh, is rotated
+            # wrt source space
+            # (i = 0, j = 0): (2, 1) <- (0, 1), (2+i, 1+j) <- (0+j, wh[0]-1-i)
+            # (i = 0, j = 1): (2, 2) <- (1, 1), (2+i, 1+j) <- (0+j, wh[0]-1-i)
+            # (i = 1, j = 0): (3, 1) <- (0, 0), (2+i, 1+j) <- (0+j, wh[0]-1-i)
+            # (i = 1, j = 1): (3, 2) <- (1, 0), (2+i, 1+j) <- (0+j, wh[0]-1-i)
+            #
             for i in range(0, wh[0]):
                 for j in range(0, wh[1]):
                     source = (source_ul[0] + j,
@@ -121,19 +143,37 @@ class QuiltPattern:
                     if source in self.pattern:
                         self.pattern[dest] = self.pattern[source].rotate(angle)
         elif angle == 180:
-             for i in range(0, wh[0]):
+            # rotate((3, 1), (2, 2), (0, 0), 180)
+            # means "put a, b, e, f where l, k, h, g currently are"
+            # Note that destination space, including wh, is rotated
+            # wrt source space
+            # (i = 0, j = 0): (2, 1) <- (1, 1), (3-(wh[0]-1)+i, 1+j) <- (0+wh[0]-1-i, wh[1]-1-j)
+            # (i = 0, j = 1): (2, 2) <- (1, 0), (3-(wh[0]-1)+i, 1+j) <- (0+wh[0]-1-i, wh[1]-1-j)
+            # (i = 1, j = 0): (3, 1) <- (0, 1), (3-(wh[0]-1)+i, 1+j) <- (0+wh[0]-1-i, wh[1]-1-j)
+            # (i = 1, j = 1): (3, 2) <- (0, 0), (3-(wh[0]-1)+i, 1+j) <- (0+wh[0]-1-i, wh[1]-1-j)
+            #
+            for i in range(0, wh[0]):
                 for j in range(0, wh[1]):
                     source = (source_ul[0] + (wh[0] - 1 - i),
-                              source_ul[1] + (wh[0] - 1 - j))
-                    dest = (dest_ul[0] + i, dest_ul[1] + j)
+                              source_ul[1] + (wh[1] - 1 - j))
+                    dest = (dest_ul[0] - (wh[0] - 1) + i, dest_ul[1] + j)
                     if source in self.pattern:
                         self.pattern[dest] = self.pattern[source].rotate(angle)
         elif angle == 270:
-             for i in range(0, wh[0]):
+            # rotate((3, 2), (2, 2), (0, 0), 270)
+            # means "put a, b, e, f where k, g, l, h currently are"
+            # Note that destination space, including wh, is rotated
+            # wrt source space
+            # (i = 0, j = 0): (2, 1) <- (1, 0), (3-(wh[0]-1)+i, 2-(wh[1]-1)+j) <- (0+wh[1]-1-j, 0+i)
+            # (i = 0, j = 1): (2, 2) <- (0, 0), (3-(wh[0]-1)+i, 2-(wh[1]-1)+j) <- (0+wh[1]-1-j, 0+i)
+            # (i = 1, j = 0): (3, 1) <- (1, 1), (3-(wh[0]-1)+i, 2-(wh[1]-1)+j) <- (0+wh[1]-1-j, 0+i)
+            # (i = 1, j = 1): (3, 2) <- (0, 1), (3-(wh[0]-1)+i, 2-(wh[1]-1)+j) <- (0+wh[1]-1-j, 0+i)
+            #
+            for i in range(0, wh[0]):
                 for j in range(0, wh[1]):
-                    source = (source_ul[0] + (wh[0] - 1 - j),
+                    source = (source_ul[0] + (wh[1] - 1 - j),
                               source_ul[1] + i)
-                    dest = (dest_ul[0] + i, dest_ul[1] + j)
+                    dest = (dest_ul[0] - (wh[0] - 1) + i, dest_ul[1] - (wh[1] - 1) + j)
                     if source in self.pattern:
                         self.pattern[dest] = self.pattern[source].rotate(angle)
         else:
@@ -204,8 +244,8 @@ class OhioStarlightQuilt(QuiltPattern):
 
         # Rotate hourglass pattern to three remaining sides of center.
         self.rotate((4, 2), (2, 2), (2, 0), 90)
-        self.rotate((2, 4), (2, 2), (2, 0), 180)
-        self.rotate((0, 2), (2, 2), (2, 0), 270)
+        self.rotate((3, 4), (2, 2), (2, 0), 180)
+        self.rotate((1, 3), (2, 2), (2, 0), 270)
 
         # Define center blocks.
         self.pattern[(2, 2)] = self.center_element
@@ -276,6 +316,88 @@ class MichiganStarlightQuilt(OhioStarlightQuilt):
         self.triangle_element = Element(self.sq_size, self.sq_size, arc,
                                         210, 85, 255)
 
+
+class DoubleChurnQuilt(QuiltPattern):
+    def __init__(self):
+        super().__init__(30, 15)
+        
+        self.solid_square = Element(self.sq_size, self.sq_size,
+                                    [(0, 0), (0, self.sq_size),
+                                     (self.sq_size, self.sq_size),
+                                     (self.sq_size, 0), (0, 0)],
+                                    60, 85, 0)
+
+        self.solid_triangle = Element(self.sq_size, self.sq_size,
+                                      [(0, self.sq_size),
+                                       (self.sq_size, self.sq_size),
+                                       (self.sq_size, 0), (0, self.sq_size)],
+                                      60, 85, 0)
+
+        self.half_block = Element(self.sq_size, self.sq_size,
+                                  [(0, self.sq_size//2),
+                                   (self.sq_size, self.sq_size//2),
+                                   (self.sq_size, self.sq_size),
+                                   (0, self.sq_size), (0, self.sq_size//2)],
+                                  220, 85, 230)
+
+    def draw(self):
+        self.pattern[(0, 0)] = self.solid_triangle
+        self.copy_pattern((1, 1), (1, 1), (0, 0))
+        self.horizontal_flip((3, 0), (2, 2), (0, 0))
+        self.vertical_flip((0, 3), (2, 2), (0, 0))
+        self.both_flip((3, 3), (2, 2), (0, 0))
+
+        self.pattern[(2, 2)] = self.solid_square
+
+        # Make three half blocks in a row
+        self.pattern[(1, 0)] = self.half_block
+        self.pattern[(2, 0)] = self.half_block
+        self.pattern[(3, 0)] = self.half_block
+
+        self.rotate((4, 1), (1, 3), (1, 0), 90)
+        self.rotate((3, 4), (3, 1), (1, 0), 180)
+        self.rotate((0, 3), (1, 3), (1, 0), 270)
+
+        # Make single half blocks
+        self.pattern[(2, 1)] = self.half_block
+
+        self.rotate((3, 2), (1, 1), (2, 1), 90)
+        self.rotate((2, 3), (1, 1), (2, 1), 180)
+        self.rotate((1, 2), (1, 1), (2, 1), 270)
+
+        def map_color(elem, hue):
+            saturation = elem.color.saturation()
+            value = elem.color.value()
+            return elem.re_color(hue, saturation, value)
+        
+        # Copy combination pattern to eight new locations.
+        self.copy_pattern((0, 5), (5, 5), (0, 0), lambda elem: map_color(elem, 40))
+        self.copy_pattern((0, 10), (5, 5), (0, 0), lambda elem: map_color(elem, 345))
+        self.copy_pattern((5, 0), (5, 5), (0, 0), lambda elem: map_color(elem, 290))
+        self.copy_pattern((5, 5), (5, 5), (0, 0), lambda elem: map_color(elem, 5))
+        self.copy_pattern((5, 10), (5, 5), (0, 0), lambda elem: map_color(elem, 90))
+        self.copy_pattern((10, 0), (5, 5), (0, 0), lambda elem: map_color(elem, 115))
+        self.copy_pattern((10, 5), (5, 5), (0, 0), lambda elem: map_color(elem, 185))
+        self.copy_pattern((10, 10), (5, 5), (0, 0), lambda elem: map_color(elem, 50))
+        
+        pattern = QtGui.QPixmap(self.total_size, self.total_size)
+        pattern.fill(self.background_color)
+
+        self.painter = QtGui.QPainter(pattern)
+
+        pen = QtGui.QPen(self.guideline_color)
+        self.painter.setPen(pen)
+        for x in range(0, self.total_size, self.sq_size):
+            self.painter.drawLine(x, 0, x, self.total_size)
+            self.painter.drawLine(0, x, self.total_size, x)
+
+        self.draw_pattern()
+       
+        self.painter.end()
+
+        return pattern
+
+
     
 # A simple drawing window with a QPainter and a QPixmap
 
@@ -287,8 +409,10 @@ class QuiltWindow(QtWidgets.QMainWindow):
 
         if arg == '1':
             self.quilt = OhioStarlightQuilt()
-        else:
+        elif arg == '2':
             self.quilt = MichiganStarlightQuilt()
+        else:
+            self.quilt = DoubleChurnQuilt()
         self.canvas = self.quilt.draw()
 
         self.label = QtWidgets.QLabel(alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
