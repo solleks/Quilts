@@ -4,7 +4,8 @@ from PySide6 import QtCore, QtWidgets, QtGui
 
 # A quilt is an M x N rectangle of squares
 # Each square is I x I pixels
-# The leaf level patterns are polygons of a particular color
+# The leaf level patterns are lists of polygons of a particular color,
+# aka list of Elements.
 # Transformations apply to J x J squares
 # Patterns are built up in dependency order (not checked).
 
@@ -72,7 +73,7 @@ class QuiltPattern:
         self.sq_num = sq_num
         self.total_size = self.sq_num * self.sq_size
 
-        # Our pattern is a map from quilt coordinate (x, y) -> Element
+        # Our pattern is a map from quilt coordinate (x, y) -> [Element]
         self.pattern = {}
 
         self.background_color = QtGui.QColor("white")
@@ -84,7 +85,7 @@ class QuiltPattern:
                 source = (source_ul[0] + i, source_ul[1] + j)
                 dest = (dest_ul[0] + i, dest_ul[1] + j)
                 if source in self.pattern:
-                    self.pattern[dest] = elem_map(self.pattern[source])
+                    self.pattern[dest] = list(map(elem_map, self.pattern[source]))
 
     def horizontal_flip(self, dest_ul, wh, source_ul):
         for i in range(0, wh[0]):
@@ -92,7 +93,7 @@ class QuiltPattern:
                 source = (source_ul[0] + (wh[0] - 1 - i), source_ul[1] + j)
                 dest = (dest_ul[0] + i, dest_ul[1] + j)
                 if source in self.pattern:
-                    self.pattern[dest] = self.pattern[source].horizontal_flip()
+                    self.pattern[dest] = list(map(lambda el: el.horizontal_flip(), self.pattern[source]))
 
     def vertical_flip(self, dest_ul, wh, source_ul):
         for i in range(0, wh[0]):
@@ -100,7 +101,7 @@ class QuiltPattern:
                 source = (source_ul[0] + i, source_ul[1] + (wh[1] - 1 - j))
                 dest = (dest_ul[0] + i, dest_ul[1] + j)
                 if source in self.pattern:
-                    self.pattern[dest] = self.pattern[source].vertical_flip()
+                    self.pattern[dest] = list(map(lambda el: el.vertical_flip(), self.pattern[source]))
 
     def both_flip(self, dest_ul, wh, source_ul):
         for i in range(0, wh[0]):
@@ -109,7 +110,7 @@ class QuiltPattern:
                           source_ul[1] + (wh[1] - 1 - j))
                 dest = (dest_ul[0] + i, dest_ul[1] + j)
                 if source in self.pattern:
-                    self.pattern[dest] = self.pattern[source].both_flip()
+                    self.pattern[dest] = list(map(lambda el: el.both_flip(), self.pattern[source]))
 
     # Example for rotation
     #
@@ -141,7 +142,7 @@ class QuiltPattern:
                               source_ul[1] + (wh[0] - 1 - i))
                     dest = (dest_ul[0] + i, dest_ul[1] + j)
                     if source in self.pattern:
-                        self.pattern[dest] = self.pattern[source].rotate(angle)
+                        self.pattern[dest] = list(map(lambda el: el.rotate(angle), self.pattern[source]))
         elif angle == 180:
             # rotate((3, 1), (2, 2), (0, 0), 180)
             # means "put a, b, e, f where l, k, h, g currently are"
@@ -158,7 +159,7 @@ class QuiltPattern:
                               source_ul[1] + (wh[1] - 1 - j))
                     dest = (dest_ul[0] - (wh[0] - 1) + i, dest_ul[1] + j)
                     if source in self.pattern:
-                        self.pattern[dest] = self.pattern[source].rotate(angle)
+                        self.pattern[dest] = list(map(lambda el: el.rotate(angle), self.pattern[source]))
         elif angle == 270:
             # rotate((3, 2), (2, 2), (0, 0), 270)
             # means "put a, b, e, f where k, g, l, h currently are"
@@ -175,7 +176,7 @@ class QuiltPattern:
                               source_ul[1] + i)
                     dest = (dest_ul[0] - (wh[0] - 1) + i, dest_ul[1] - (wh[1] - 1) + j)
                     if source in self.pattern:
-                        self.pattern[dest] = self.pattern[source].rotate(angle)
+                        self.pattern[dest] = list(map(lambda el: el.rotate(angle), self.pattern[source]))
         else:
              for i in range(0, wh[0]):
                 for j in range(0, wh[1]):
@@ -197,9 +198,27 @@ class QuiltPattern:
         self.painter.drawPolygon(pts)
                     
     def draw_pattern(self):
-        for coord, elem in self.pattern.items():
-            self.draw_element(coord[0], coord[1], elem)
-        
+        for coord, elems in self.pattern.items():
+            for el in elems:
+                self.draw_element(coord[0], coord[1], el)
+
+    def pattern_to_pixmap(self):
+        pixmap = QtGui.QPixmap(self.total_size, self.total_size)
+        pixmap.fill(self.background_color)
+
+        self.painter = QtGui.QPainter(pixmap)
+
+        pen = QtGui.QPen(self.guideline_color)
+        self.painter.setPen(pen)
+        for x in range(0, self.total_size, self.sq_size):
+            self.painter.drawLine(x, 0, x, self.total_size)
+            self.painter.drawLine(0, x, self.total_size, x)
+
+        self.draw_pattern()
+       
+        self.painter.end()
+
+        return pixmap
 
 class OhioStarlightQuilt(QuiltPattern):
     def __init__(self):
@@ -228,7 +247,7 @@ class OhioStarlightQuilt(QuiltPattern):
     # format.
     def draw(self):
         # Define basic checkerboard pair.
-        self.pattern[(0, 0)] = self.checker_element
+        self.pattern[(0, 0)] = [self.checker_element]
         self.copy_pattern((1, 1), (1, 1), (0, 0))
 
         # Copy and flip checkerboard.
@@ -237,10 +256,10 @@ class OhioStarlightQuilt(QuiltPattern):
         self.both_flip((4, 4), (2, 2), (0, 0))
 
         # Define basic hourglass pattern made up of triangles.
-        self.pattern[(2, 0)] = self.triangle_element
-        self.pattern[(2, 1)] = self.triangle_element.vertical_flip().re_color(15, 85, 230)
-        self.pattern[(3, 0)] = self.triangle_element.horizontal_flip().re_color(5, 85, 220)
-        self.pattern[(3, 1)] = self.triangle_element.both_flip().re_color(220, 85, 240)
+        self.pattern[(2, 0)] = [self.triangle_element]
+        self.pattern[(2, 1)] = [self.triangle_element.vertical_flip().re_color(15, 85, 230)]
+        self.pattern[(3, 0)] = [self.triangle_element.horizontal_flip().re_color(5, 85, 220)]
+        self.pattern[(3, 1)] = [self.triangle_element.both_flip().re_color(220, 85, 240)]
 
         # Rotate hourglass pattern to three remaining sides of center.
         self.rotate((4, 2), (2, 2), (2, 0), 90)
@@ -248,7 +267,7 @@ class OhioStarlightQuilt(QuiltPattern):
         self.rotate((1, 3), (2, 2), (2, 0), 270)
 
         # Define center blocks.
-        self.pattern[(2, 2)] = self.center_element
+        self.pattern[(2, 2)] = [self.center_element]
         self.horizontal_flip((3, 2), (1, 1), (2, 2))
         self.vertical_flip((2, 3), (2, 1), (2, 2))
 
@@ -268,22 +287,8 @@ class OhioStarlightQuilt(QuiltPattern):
         self.copy_pattern((14, 7), (6, 6), (0, 0))
         self.copy_pattern((14, 14), (6, 6), (0, 0))
 
-        pattern = QtGui.QPixmap(self.total_size, self.total_size)
-        pattern.fill(self.background_color)
+        return self.pattern_to_pixmap()
 
-        self.painter = QtGui.QPainter(pattern)
-
-        pen = QtGui.QPen(self.guideline_color)
-        self.painter.setPen(pen)
-        for x in range(0, self.total_size, self.sq_size):
-            self.painter.drawLine(x, 0, x, self.total_size)
-            self.painter.drawLine(0, x, self.total_size, x)
-
-        self.draw_pattern()
-       
-        self.painter.end()
-
-        return pattern
 
 class MichiganStarlightQuilt(OhioStarlightQuilt):
     def __init__(self):
@@ -341,25 +346,25 @@ class DoubleChurnQuilt(QuiltPattern):
                                   220, 85, 230)
 
     def draw(self):
-        self.pattern[(0, 0)] = self.solid_triangle
+        self.pattern[(0, 0)] = [self.solid_triangle]
         self.copy_pattern((1, 1), (1, 1), (0, 0))
         self.horizontal_flip((3, 0), (2, 2), (0, 0))
         self.vertical_flip((0, 3), (2, 2), (0, 0))
         self.both_flip((3, 3), (2, 2), (0, 0))
 
-        self.pattern[(2, 2)] = self.solid_square
+        self.pattern[(2, 2)] = [self.solid_square]
 
         # Make three half blocks in a row
-        self.pattern[(1, 0)] = self.half_block
-        self.pattern[(2, 0)] = self.half_block
-        self.pattern[(3, 0)] = self.half_block
+        self.pattern[(1, 0)] = [self.half_block]
+        self.pattern[(2, 0)] = [self.half_block]
+        self.pattern[(3, 0)] = [self.half_block]
 
         self.rotate((4, 1), (1, 3), (1, 0), 90)
         self.rotate((3, 4), (3, 1), (1, 0), 180)
         self.rotate((0, 3), (1, 3), (1, 0), 270)
 
         # Make single half blocks
-        self.pattern[(2, 1)] = self.half_block
+        self.pattern[(2, 1)] = [self.half_block]
 
         self.rotate((3, 2), (1, 1), (2, 1), 90)
         self.rotate((2, 3), (1, 1), (2, 1), 180)
@@ -380,23 +385,45 @@ class DoubleChurnQuilt(QuiltPattern):
         self.copy_pattern((10, 5), (5, 5), (0, 0), lambda elem: map_color(elem, 185))
         self.copy_pattern((10, 10), (5, 5), (0, 0), lambda elem: map_color(elem, 50))
         
-        pattern = QtGui.QPixmap(self.total_size, self.total_size)
-        pattern.fill(self.background_color)
+        return self.pattern_to_pixmap()
 
-        self.painter = QtGui.QPainter(pattern)
 
-        pen = QtGui.QPen(self.guideline_color)
-        self.painter.setPen(pen)
-        for x in range(0, self.total_size, self.sq_size):
-            self.painter.drawLine(x, 0, x, self.total_size)
-            self.painter.drawLine(0, x, self.total_size, x)
+class CarpentersStarQuilt(QuiltPattern):
+    def __init__(self):
+        super().__init__(100, 8)
+        
+        self.solid_square = Element(self.sq_size, self.sq_size,
+                                    [(0, 0), (0, self.sq_size),
+                                     (self.sq_size, self.sq_size),
+                                     (self.sq_size, 0), (0, 0)],
+                                    20, 85, 230)
 
-        self.draw_pattern()
-       
-        self.painter.end()
+        self.solid_triangle = Element(self.sq_size, self.sq_size,
+                                      [(0, 0), (0, self.sq_size),
+                                       (self.sq_size, self.sq_size), (0, 0)],
+                                      120, 85, 230)
 
-        return pattern
 
+    def draw(self):
+        self.pattern[(1, 1)] = [self.solid_square]
+        self.copy_pattern((2, 1), (1, 1), (1, 1))
+        self.copy_pattern((1, 2), (1, 1), (1, 1))
+        self.copy_pattern((3, 3), (1, 1), (1, 1))
+        
+        self.pattern[(2, 0)] = [self.solid_triangle]
+        self.horizontal_flip((3, 0), (1, 1), (2, 0))
+        self.both_flip((3, 1), (1, 1), (3, 0))
+        self.copy_pattern((3, 2), (1, 1), (2, 0))
+
+        self.both_flip((0, 2), (1, 1), (2, 0))
+        self.vertical_flip((0, 3), (1, 1), (0, 2))
+        self.horizontal_flip((1, 3), (1, 1), (0, 2))
+        self.copy_pattern((2, 3), (1, 1), (0, 2))
+
+        self.horizontal_flip((4, 0), (4, 4), (0, 0))
+        self.vertical_flip((0, 4), (8, 4), (0, 0))
+        
+        return self.pattern_to_pixmap()
 
     
 # A simple drawing window with a QPainter and a QPixmap
@@ -411,8 +438,10 @@ class QuiltWindow(QtWidgets.QMainWindow):
             self.quilt = OhioStarlightQuilt()
         elif arg == '2':
             self.quilt = MichiganStarlightQuilt()
-        else:
+        elif arg == '3':
             self.quilt = DoubleChurnQuilt()
+        else:
+            self.quilt = CarpentersStarQuilt()
         self.canvas = self.quilt.draw()
 
         self.label = QtWidgets.QLabel(alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
