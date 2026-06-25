@@ -434,6 +434,270 @@ class CarpentersStarQuilt(QuiltPattern):
         return self.pattern_to_pixmap()
 
     
+class ReducingStarQuilt(QuiltPattern):
+    def __init__(self):
+        super().__init__(16, 64)
+        
+        self.solid_triangle1 = Element(self.sq_size, self.sq_size,
+                                       [(0, 0), (0, self.sq_size),
+                                        (self.sq_size//4, self.sq_size), (0, 0)],
+                                       175, 85, 230)
+        self.solid_quadrilateral1 = Element(self.sq_size, self.sq_size,
+                                            [(0, 0), (0, self.sq_size),
+                                             (self.sq_size//2, self.sq_size),
+                                             (self.sq_size//4, 0), (0, 0)],
+                                            175, 85, 230)
+        self.solid_quadrilateral2 = Element(self.sq_size, self.sq_size,
+                                            [(0, 0), (0, self.sq_size),
+                                             (3*self.sq_size//4, self.sq_size),
+                                             (self.sq_size//2, 0), (0, 0)],
+                                            175, 85, 230)
+        self.solid_quadrilateral3 = Element(self.sq_size, self.sq_size,
+                                            [(0, 0), (0, self.sq_size),
+                                             (self.sq_size, self.sq_size),
+                                             (3*self.sq_size//4, 0), (0, 0)],
+                                            175, 85, 230)
+        self.solid_square1 = Element(self.sq_size, self.sq_size,
+                                     [(0, 0), (0, self.sq_size),
+                                      (self.sq_size, self.sq_size),
+                                      (self.sq_size, 0), (0, 0)],
+                                     175, 85, 230)
+        self.solid_square2 = Element(self.sq_size, self.sq_size,
+                                     [(0, 0), (0, self.sq_size),
+                                      (self.sq_size, self.sq_size),
+                                      (self.sq_size, 0), (0, 0)],
+                                     99, 85, 180)
+
+        self.diagonal1 = Element(self.sq_size, self.sq_size,
+                                 [(0, 0), (0, self.sq_size),
+                                  (self.sq_size, self.sq_size), (0, 0)],
+                                 175, 85, 230)
+
+        self.diagonal2 = Element(self.sq_size, self.sq_size,
+                                 [(0, 0), (self.sq_size, 0),
+                                  (self.sq_size, self.sq_size), (0, 0)],
+                                 99, 85, 180)
+
+        self.odd_corner1 = Element(self.sq_size, self.sq_size,
+                                   [(0, self.sq_size), (self.sq_size, self.sq_size),
+                                    (self.sq_size//2, self.sq_size//2),
+                                    (0, 3*self.sq_size//4),
+                                    (0, self.sq_size)],
+                                   175, 85, 230)
+
+        self.odd_corner2 = Element(self.sq_size, self.sq_size,
+                                   [(self.sq_size, 0), (self.sq_size, self.sq_size),
+                                    (self.sq_size//2, self.sq_size//2),
+                                    (3*self.sq_size//4, 0), (self.sq_size, 0)],
+                                   99, 85, 180)
+        
+
+    def draw(self):
+        # Diagonal sides
+        self.pattern[(32, 0)] = [self.solid_triangle1]
+        self.pattern[(32, 1)] = [self.solid_quadrilateral1]
+        self.pattern[(32, 2)] = [self.solid_quadrilateral2]
+        self.pattern[(32, 3)] = [self.solid_quadrilateral3]
+        self.copy_pattern((33, 4), (1, 4), (32, 0))
+        self.copy_pattern((34, 8), (2, 8), (32, 0))
+        self.copy_pattern((36, 16), (4, 9), (32, 0))
+
+        self.horizontal_flip((25, 0), (7, 32), (32, 0))
+        self.modify((25, 0), (7, 32), (lambda el: el.re_color(99, 85, 180)))
+
+        self.rotate((36, 25), (28, 14), (25, 0), 90)
+        self.rotate((38, 36), (14, 28), (25, 0), 180)
+        self.rotate((27, 38), (28, 14), (25, 0), 270)
+
+        # Squares
+        for y in range(4, 31):
+            self.pattern[(32, y)] = [self.solid_square1]
+            self.pattern[(31, 63 - y)] = [self.solid_square1]
+            self.pattern[(31, y)] = [self.solid_square2]
+            self.pattern[(32, 63 - y)] = [self.solid_square2]
+
+        for y in range(8, 30):
+            self.pattern[(33, y)] = [self.solid_square1]
+            self.pattern[(30, 63 - y)] = [self.solid_square1]
+            self.pattern[(33, 63 - y)] = [self.solid_square2]
+            self.pattern[(30, y)] = [self.solid_square2]
+
+        for y in range(12, 29):
+            self.pattern[(34, y)] = [self.solid_square1]
+            self.pattern[(29, 63 - y)] = [self.solid_square1]
+            self.pattern[(34, 63 - y)] = [self.solid_square2]
+            self.pattern[(29, y)] = [self.solid_square2]
+
+        for y in range(16, 28):
+            self.pattern[(35, y)] = [self.solid_square1]
+            self.pattern[(28, 63 - y)] = [self.solid_square1]
+            self.pattern[(35, 63 - y)] = [self.solid_square2]
+            self.pattern[(28, y)] = [self.solid_square2]
+        
+        for y in range(20, 27):
+            self.pattern[(36, y)] = [self.solid_square1]
+            self.pattern[(27, 63 - y)] = [self.solid_square1]
+            self.pattern[(36, 63 - y)] = [self.solid_square2]
+            self.pattern[(27, y)] = [self.solid_square2]
+
+        for y in range(24, 26):
+            self.pattern[(37, y)] = [self.solid_square1]
+            self.pattern[(26, 63 - y)] = [self.solid_square1]
+            self.pattern[(37, 63 - y)] = [self.solid_square2]
+            self.pattern[(26, y)] = [self.solid_square2]
+
+        for x in range(4, 31):
+            self.pattern[(x, 31)] = [self.solid_square1]
+            self.pattern[(63 - x, 32)] = [self.solid_square1]
+            self.pattern[(x, 32)] = [self.solid_square2]
+            self.pattern[(63 - x, 31)] = [self.solid_square2]
+
+        for x in range(8, 30):
+            self.pattern[(x, 30)] = [self.solid_square1]
+            self.pattern[(63 - x, 33)] = [self.solid_square1]
+            self.pattern[(x, 33)] = [self.solid_square2]
+            self.pattern[(63 - x, 30)] = [self.solid_square2]
+
+        for x in range(12, 29):
+            self.pattern[(x, 29)] = [self.solid_square1]
+            self.pattern[(63 - x, 34)] = [self.solid_square1]
+            self.pattern[(x, 34)] = [self.solid_square2]
+            self.pattern[(63 - x, 29)] = [self.solid_square2]
+
+        for x in range(16, 28):
+            self.pattern[(x, 28)] = [self.solid_square1]
+            self.pattern[(63 - x, 35)] = [self.solid_square1]
+            self.pattern[(x, 35)] = [self.solid_square2]
+            self.pattern[(63 - x, 28)] = [self.solid_square2]
+
+        for x in range(20, 27):
+            self.pattern[(x, 27)] = [self.solid_square1]
+            self.pattern[(63 - x, 36)] = [self.solid_square1]
+            self.pattern[(x, 36)] = [self.solid_square2]
+            self.pattern[(63 - x, 27)] = [self.solid_square2]
+
+        for x in range(24, 26):
+            self.pattern[(x, 26)] = [self.solid_square1]
+            self.pattern[(63 - x, 37)] = [self.solid_square1]
+            self.pattern[(x, 37)] = [self.solid_square2]
+            self.pattern[(63 - x, 26)] = [self.solid_square2]
+
+        # Diagonals
+        self.pattern[(31, 31)] = [self.diagonal1, self.diagonal2]
+        self.rotate((32, 31), (1, 1), (31, 31), 90)
+        self.rotate((32, 32), (1, 1), (31, 31), 180)
+        self.rotate((31, 32), (1, 1), (31, 31), 270)
+
+        for d in range(1, 6):
+            self.copy_pattern((31 - d, 31 - d), (1, 1), (31, 31))
+            self.copy_pattern((32 + d, 31 - d), (1, 1), (32, 31))
+            self.copy_pattern((32 + d, 32 + d), (1, 1), (32, 32))
+            self.copy_pattern((31 - d, 32 + d), (1, 1), (31, 32))
+
+        self.pattern[(25, 25)] = [self.odd_corner1, self.odd_corner2]
+        self.rotate((38, 25), (1, 1), (25, 25), 90)
+        self.rotate((38, 38), (1, 1), (25, 25), 180)
+        self.rotate((25, 38), (1, 1), (25, 25), 270)
+            
+        return self.pattern_to_pixmap()
+
+class NewStarQuilt(QuiltPattern):
+    def __init__(self):
+        super().__init__(1, 800)
+
+        self.width = 0.15
+
+        def star_shape1(ox, oy, size):
+            return [(ox, oy - size + 1),
+                    (ox, oy),
+                    (ox - round(self.width * size), oy - round(self.width * size)),
+                    (ox, oy - size + 1)]
+
+        def star_shape2(ox, oy, size):
+            return [(ox, oy - size + 1),
+                    (ox, oy),
+                    (ox + round(self.width * size), oy - round(self.width * size)),
+                    (ox, oy - size + 1)]
+
+        def star_shape3(ox, oy, size):
+            return [(ox + size - 1, oy),
+                    (ox, oy),
+                    (ox + round(self.width * size), oy - round(self.width * size)),
+                    (ox + size - 1, oy)]
+
+        def star_shape4(ox, oy, size):
+            return [(ox + size - 1, oy),
+                    (ox, oy),
+                    (ox + round(self.width * size), oy + round(self.width * size)),
+                    (ox + size - 1, oy)]
+        
+        def star_shape5(ox, oy, size):
+            return [(ox, oy + size - 1),
+                    (ox, oy),
+                    (ox + round(self.width * size), oy + round(self.width * size)),
+                    (ox, oy + size - 1)]
+
+        def star_shape6(ox, oy, size):
+            return [(ox, oy + size - 1),
+                    (ox, oy),
+                    (ox - round(self.width * size), oy + round(self.width * size)),
+                    (ox, oy + size -1)]
+
+        def star_shape7(ox, oy, size):
+            return [(ox - size + 1, oy),
+                    (ox, oy),
+                    (ox - round(self.width * size), oy + round(self.width * size)),
+                    (ox - size + 1, oy)]
+        
+        def star_shape8(ox, oy, size):
+            return [(ox - size + 1, oy),
+                    (ox, oy),
+                    (ox - round(self.width * size), oy - round(self.width * size)),
+                    (ox - size + 1, oy)]
+
+
+        def green_piece(coords):
+            return Element(self.sq_size, self.sq_size, coords, 99, 85, 180)
+
+        def blue_piece(coords):
+            return Element(self.sq_size, self.sq_size, coords, 175, 85, 230)
+
+        def one_star(x, y, size):
+            return [green_piece(star_shape1(x, y, size)),
+                    blue_piece(star_shape2(x+1, y, size)),
+                    green_piece(star_shape3(x+1, y, size)),
+                    blue_piece(star_shape4(x+1, y+1, size)),
+                    green_piece(star_shape5(x+1, y+1, size)),
+                    blue_piece(star_shape6(x, y+1, size)),
+                    green_piece(star_shape7(x, y+1, size)),
+                    blue_piece(star_shape8(x, y, size))]
+
+        self.large_star = one_star(399, 399, 400)
+
+        self.medium_star1 = one_star(180, 180, 150)
+        self.medium_star2 = one_star(620, 180, 150)
+        self.medium_star3 = one_star(620, 620, 150)
+        self.medium_star4 = one_star(180, 620, 150)
+
+        self.small_star1 = one_star(90, 90, 50)
+        self.small_star2 = one_star(270, 90, 50)
+        self.small_star3 = one_star(90, 270, 50)
+        self.small_star4 = one_star(530, 90, 50)
+        self.small_star5 = one_star(710, 90, 50)
+        self.small_star6 = one_star(710, 270, 50)
+        self.small_star7 = one_star(710, 530, 50)
+        self.small_star8 = one_star(710, 710, 50)
+        self.small_star9 = one_star(520, 710, 50)
+        self.small_star10 = one_star(270, 710, 50)
+        self.small_star11 = one_star(90, 710, 50)
+        self.small_star12 = one_star(90, 530, 50)
+
+    def draw(self):
+        self.pattern[(0, 0)] = self.large_star + self.medium_star1 + self.medium_star2 + self.medium_star3 + self.medium_star4 + self.small_star1 + self.small_star2 + self.small_star3 + self.small_star4 + self.small_star5 + self.small_star6 + self.small_star7 + self.small_star8 + self.small_star9 + self.small_star10 + self.small_star11 + self.small_star12
+        
+        return self.pattern_to_pixmap()
+
+    
 # A simple drawing window with a QPainter and a QPixmap
 
 class QuiltWindow(QtWidgets.QMainWindow):
@@ -448,8 +712,12 @@ class QuiltWindow(QtWidgets.QMainWindow):
             self.quilt = MichiganStarlightQuilt()
         elif arg == '3':
             self.quilt = DoubleChurnQuilt()
-        else:
+        elif arg == '4':
             self.quilt = CarpentersStarQuilt()
+        elif arg == '5':
+            self.quilt = ReducingStarQuilt()
+        else:
+            self.quilt = NewStarQuilt()
         self.canvas = self.quilt.draw()
 
         self.label = QtWidgets.QLabel(alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
